@@ -4,5 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-lunatic = "0.14.1"
 mqtt_packet_3_5 = "0.2.2"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = "0.17"
+futures = "0.3" 
+futures-util = "0.3"
