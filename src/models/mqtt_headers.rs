@@ -82,9 +82,28 @@ impl MqttHeaders {
 }
 
 
+#[derive(Debug, Clone)]
+pub struct ConnectHeader {
+    pub protocol_name: String,
+    pub protocol_level: u8,
+    pub connect_flags: u8,
+    pub keep_alive: u16,
+}
+
+#[derive(Debug, Clone)]
+pub struct PublishHeader {
+    pub topic_name: String,
+    pub packet_id: u16,
+}
+
+#[derive(Debug, Clone)]
+pub struct SubscribeHeader {
+    pub packet_id: u16,
+}
+
 
 #[cfg(test)]
-mod mytests {
+mod mqtt_headers_tests {
     use super::*; 
 
     #[test]
