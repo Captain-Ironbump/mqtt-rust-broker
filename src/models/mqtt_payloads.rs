@@ -36,16 +36,23 @@ impl PayloadFactory {
             let client_id: String = String::from_utf8(payload_data[payload_idx..client_id_length + payload_idx].to_vec()).unwrap();
             payload_idx += client_id_length + 1; // +1 to skip the length of the client id
             let mut will_topic: String = "".to_string();
+            let mut will_message: String = "".to_string();
             if connect_header.connect_flags & 0b00000100 != 0 {
                 let will_topic_length: usize = (payload_data[payload_idx] as usize) << 8 | payload_data[payload_idx + 1] as usize;
                 payload_idx += 2;
-                will_topic = String::from_utf8(payload_data[payload_idx..will_topic_length + payload_idx].to_vec()).unwrap();    
+                will_topic = String::from_utf8(payload_data[payload_idx..will_topic_length + payload_idx].to_vec()).unwrap();
+                payload_idx += will_topic_length + 1;
+                let will_message_length: usize = (payload_data[payload_idx] as usize) << 8 | payload_data[payload_idx + 1] as usize;
+                payload_idx += 2;
+                will_message = String::from_utf8(payload_data[payload_idx..will_message_length + payload_idx].to_vec()).unwrap();
+                payload_idx += will_message_length + 1;
             }
             
             
             Payload {
                 client_id: Some(client_id),
                 will_topic: Some(will_topic),
+                will_message: Some(will_message),
                 ..Default::default()
             }
         } else {
