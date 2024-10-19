@@ -22,7 +22,7 @@ impl PayloadFactory {
             // "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" [MQTT-3.1.3-5]
             
             // take teh first two bytes of the payload data to get the length of the client id
-            let client_id_length = (payload_data[0] as usize) << 8 | payload_data[1] as usize;
+            let client_id_length: usize  = (payload_data[0] as usize) << 8 | payload_data[1] as usize;
             if client_id_length == 0 {
                 //TODO: maybe allow for empty client id and generate a random one
                 //TODO: set Client Clean Session to 1 if client id is empty
@@ -32,9 +32,15 @@ impl PayloadFactory {
             if client_id_length > 23 {
                 panic!("Client ID cannot be longer than 23 bytes");
             }
-            let mut payload_idx = 2 as usize;
-            let client_id = String::from_utf8(payload_data[payload_idx..client_id_length + payload_idx].to_vec()).unwrap();
-            payload_idx += client_id_length;
+            let mut payload_idx: usize = 2 as usize;
+            let client_id: String = String::from_utf8(payload_data[payload_idx..client_id_length + payload_idx].to_vec()).unwrap();
+            payload_idx += client_id_length + 1; // +1 to skip the length of the client id
+            let mut will_topic: Option<String> = None;
+            if connect_header.connect_flags & 0b00000100 != 0 {
+                
+            }
+            
+            
             Payload {
                 client_id: Some(client_id),
                 ..Default::default()
