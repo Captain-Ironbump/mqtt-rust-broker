@@ -1,3 +1,5 @@
+use std::any::Any;
+
 use crate::models::mqtt_types::MqttPacketType;
 
 #[derive(Debug, Clone, Copy)]
@@ -81,6 +83,11 @@ impl MqttHeaders {
     }
 }
 
+pub trait VariableHeader {
+    fn header_type(&self) -> MqttPacketType;
+    fn as_any(&self) -> &dyn Any;
+}
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConnectHeader {
@@ -102,8 +109,38 @@ pub struct SubscribeHeader {
 }
 
 
+impl VariableHeader for ConnectHeader {
+    fn header_type(&self) -> MqttPacketType {
+        MqttPacketType::Connect
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl VariableHeader for PublishHeader {
+    fn header_type(&self) -> MqttPacketType {
+        MqttPacketType::Publish
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+impl VariableHeader for SubscribeHeader {
+    fn header_type(&self) -> MqttPacketType {
+        MqttPacketType::Subscribe
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
 impl ConnectHeader {
-    pub fn new(protocol_name: String, protocol_level: u8, connect_flags: u8, keep_alive: u16) -> Result<Self, String> {
+   pub fn new(protocol_name: String, protocol_level: u8, connect_flags: u8, keep_alive: u16) -> Result<Self, String> {
        if protocol_name.len() != 4 && protocol_name != "MQTT" {
            return Err("Invalid Protocol Name".to_string());
        }
@@ -113,9 +150,8 @@ impl ConnectHeader {
            connect_flags,
            keep_alive,
        }) 
-    }
+    } 
 }
-
 
 #[cfg(test)]
 mod mqtt_headers_tests {
