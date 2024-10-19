@@ -82,7 +82,7 @@ impl MqttHeaders {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ConnectHeader {
     pub protocol_name: String,
     pub protocol_level: u8,
@@ -90,15 +90,30 @@ pub struct ConnectHeader {
     pub keep_alive: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PublishHeader {
     pub topic_name: String,
     pub packet_id: u16,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SubscribeHeader {
     pub packet_id: u16,
+}
+
+
+impl ConnectHeader {
+    pub fn new(protocol_name: String, protocol_level: u8, connect_flags: u8, keep_alive: u16) -> Result<Self, String> {
+       if protocol_name.len() != 4 && protocol_name != "MQTT" {
+           return Err("Invalid Protocol Name".to_string());
+       }
+       Ok(Self {
+           protocol_name,
+           protocol_level,
+           connect_flags,
+           keep_alive,
+       }) 
+    }
 }
 
 
@@ -124,5 +139,20 @@ mod mqtt_headers_tests {
         };
         let buffer = headers.to_bytes();
         assert_eq!(buffer, vec![0x10, 0x0A]);
+    }
+
+    #[test]
+    fn test_connect_header_new() {
+        let header = ConnectHeader::new("MQTT".to_string(), 4, 0, 60).unwrap();
+        assert_eq!(header.protocol_name, "MQTT");
+        assert_eq!(header.protocol_level, 4);
+        assert_eq!(header.connect_flags, 0);
+        assert_eq!(header.keep_alive, 60);
+    }
+
+    #[test]
+    fn test_connect_header_new_invalid_protocol_name() {
+        let header = ConnectHeader::new("MQT".to_string(), 4, 0, 60);
+        assert_eq!(header, Err("Invalid Protocol Name".to_string()));
     }
 }
