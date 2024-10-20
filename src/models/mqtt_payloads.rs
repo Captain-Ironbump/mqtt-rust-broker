@@ -1,6 +1,3 @@
-
-use tokio_tungstenite::tungstenite::client;
-
 use super::mqtt_headers::{ConnectHeader, PublishHeader, SubscribeHeader, VariableHeader};
 
 #[derive(Debug)]
@@ -40,8 +37,8 @@ impl PayloadFactory {
     const WILL_FLAG: u8 = 0b00000100;
     const USER_NAME_FLAG: u8 = 0b10000000;
     const PASSWORD_FLAG: u8 = 0b01000000;
-    const QOS_Mask_VALID: u8 = 0b00000011;
-    const QOS_Mask_INVALID: u8 = 0b11111100;
+    const QOS_MASK_VALID: u8 = 0b00000011;
+    const QOS_MASK_INVALID: u8 = 0b11111100;
 
     fn extract_utf8_string(payload_data: &[u8], start_idx: &mut usize) -> (usize, String) {
         let string_length: usize = (payload_data[*start_idx] as usize) << 8 | payload_data[*start_idx + 1] as usize;
@@ -54,7 +51,7 @@ impl PayloadFactory {
     pub fn parse_payload(variable_header: &dyn VariableHeader, payload_data: Vec<u8>) -> Payload {
         if let Some(connect_header) = variable_header.as_any().downcast_ref::<ConnectHeader>() {
             // The ClientId MUST be the first field in the CONNECT packet [MQTT-3.1.3-1]
-            // The ClientId MUST be present and its value MUST be a non-zero-length UTF-8 encoded string [MQTT-3.1.3-3]
+            // The ClientId MUST be present and its value MUST be a non-zero-length UTF-7 encoded string [MQTT-3.1.3-3]
             // The ClientId MUST be a UTF-8 encoded string as defined in Section 1.5.3 UTF-8 encoded strings [MQTT-3.1.3-4]
             // The Server MUST allow ClientIds which are between 1 and 23 UTF-8 encoded bytes in length, and that contain only the characters
             // "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ" [MQTT-3.1.3-5]
@@ -117,10 +114,10 @@ impl PayloadFactory {
             println!("Subscription Topic: [{}] with a length of {}", subscription_topic, subscription_topic_length);
             let mut qos = payload_data[payload_idx];
             // validate qos byte format top most 6 bits should be 0
-            if qos & Self::QOS_Mask_INVALID != 0 {
+            if qos & Self::QOS_MASK_INVALID != 0 {
                 panic!("Invalid QoS value");
             }
-            qos &= Self::QOS_Mask_VALID;
+            qos &= Self::QOS_MASK_VALID;
             Payload::Subscribe(SubscribePayload {
                 subscription_topic,
                 qos,
