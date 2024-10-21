@@ -44,7 +44,7 @@ impl PayloadFactory {
         let string_length: usize = (payload_data[*start_idx] as usize) << 8 | payload_data[*start_idx + 1] as usize;
         *start_idx += 2;
         let extracted_string: String = String::from_utf8(payload_data[*start_idx..string_length + *start_idx].to_vec()).unwrap();
-        *start_idx += string_length + 1;
+        *start_idx += string_length;
         (string_length, extracted_string)
     }
 
@@ -129,3 +129,101 @@ impl PayloadFactory {
     }
     
 }
+
+
+#[cfg(test)]
+mod payload_tests {
+    use super::*;
+
+    #[test]
+    fn test_connect_payload_empty() {
+        let connect_header = ConnectHeader {
+            connect_flags: 0b00000000,
+            keep_alive: 60,
+            protocol_name: "MQTT".to_string(),
+            protocol_level: 4,
+        };
+        let payload_data: Vec<u8> = vec![
+            0x00, 0x04, 0x74, 0x65, 0x73, 0x74, // Client ID: test
+            0x00, 0x00, // Will Topic: 
+            0x00, 0x00, // Will Message: 
+            0x00, 0x00, // User Name: 
+            0x00, 0x00, // Password: 
+        ];
+        let payload = PayloadFactory::parse_payload(&connect_header, payload_data);
+        match payload {
+            Payload::Connect(connect_payload) => {
+                assert_eq!(connect_payload.client_id.unwrap(), "test");
+                assert_eq!(connect_payload.will_topic.unwrap(), "");
+                assert_eq!(connect_payload.will_message.unwrap(), "");
+                assert_eq!(connect_payload.username.unwrap(), "");
+                assert_eq!(connect_payload.password.unwrap(), "");
+            },
+            _ => panic!("Invalid payload type"),
+        }
+    }
+
+    #[test]
+    fn test_connect_payload_non_empty() {
+        let connect_header = ConnectHeader {
+            connect_flags: 0b11000100,
+            keep_alive: 60,
+            protocol_name: "MQTT".to_string(),
+            protocol_level: 4,
+        };
+        let payload_data: Vec<u8> = vec![
+            0x00, 0x04, 0x74, 0x65, 0x73, 0x74, // Client ID: test
+            0x00, 0x04, 0x74, 0x65, 0x73, 0x74, // Will Topic: test
+            0x00, 0x04, 0x74, 0x65, 0x73, 0x74, // Will Message: test
+            0x00, 0x04, 0x74, 0x65, 0x73, 0x74, // User Name: test
+            0x00, 0x04, 0x74, 0x65, 0x73, 0x74, // Password: test
+        ];
+        let payload = PayloadFactory::parse_payload(&connect_header, payload_data);
+        match payload {
+            Payload::Connect(connect_payload) => {
+                assert_eq!(connect_payload.client_id.unwrap(), "test");
+                assert_eq!(connect_payload.will_topic.unwrap(), "test");
+                assert_eq!(connect_payload.will_message.unwrap(), "test");
+                assert_eq!(connect_payload.username.unwrap(), "test");
+                assert_eq!(connect_payload.password.unwrap(), "test");
+            },
+            _ => panic!("Invalid payload type"),
+        }
+    } 
+
+    #[test]
+    fn test_publish_payload() {
+        let publish_header = PublishHeader {
+            topic_name: "test".to_string(),
+            packet_id: 0,
+        };
+        let payload_data: Vec<u8> = vec![0x00, 0x01, 0x02, 0x03];
+        let payload = PayloadFactory::parse_payload(&publish_header, payload_data);
+        match payload {
+            Payload::Publish(publish_payload) => {
+                assert_eq!(publish_payload.payload, vec![0x00, 0x01, 0x02, 0x03]);
+            },
+            _ => panic!("Invalid payload type"),
+        }
+    }
+
+    #[test]
+    fn test_subscribe_payload() {
+        let subscribe_header = SubscribeHeader {
+            packet_id: 0,
+        };
+        let payload_data: Vec<u8> = vec![
+            0x00, 0x04, 0x74, 0x65, 0x73, 0x74, // Subscription Topic: test
+            0x01, // QoS: 1
+        ];
+        let payload = PayloadFactory::parse_payload(&subscribe_header, payload_data);
+        match payload {
+            Payload::Subscribe(subscribe_payload) => {
+                assert_eq!(subscribe_payload.subscription_topic, "test");
+                assert_eq!(subscribe_payload.qos, 1);
+            },
+            _ => panic!("Invalid payload type"),
+        }
+    }
+}
+
