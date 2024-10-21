@@ -140,6 +140,12 @@ impl VariableHeader for SubscribeHeader {
 }
 
 impl ConnectHeader {
+    const PROTOCOL_NAME_LENGTH: usize = 4;
+    const PROTOCOL_LEVEL_LENGTH: usize = 1;
+    const CONNECT_FLAGS_LENGTH: usize = 1;
+    const KEEP_ALIVE_LENGTH: usize = 2; // 2 bytes
+
+
    pub fn new(protocol_name: String, protocol_level: u8, connect_flags: u8, keep_alive: u16) -> Result<Self, String> {
        if protocol_name.len() != 4 && protocol_name != "MQTT" {
            return Err("Invalid Protocol Name".to_string());
@@ -150,7 +156,23 @@ impl ConnectHeader {
            connect_flags,
            keep_alive,
        }) 
-    } 
+    }
+    pub fn from_bytes(data: &[u8]) -> Self {
+        // the date variable is expected to not hold the fixed header
+        let mut idx = 0;
+        let protocol_name = String::from_utf8(data[idx..Self::PROTOCOL_NAME_LENGTH].to_vec()).unwrap();
+        idx += Self::PROTOCOL_NAME_LENGTH + 1;
+        let protocol_level = data[idx - Self::PROTOCOL_LEVEL_LENGTH];
+        idx += Self::PROTOCOL_LEVEL_LENGTH + 1;
+        let connect_flags = data[idx - Self::CONNECT_FLAGS_LENGTH];
+        idx += Self::CONNECT_FLAGS_LENGTH + 2;
+        let keep_alive = u16::from_be_bytes([data[idx - Self::KEEP_ALIVE_LENGTH - 2], data[idx - Self::KEEP_ALIVE_LENGTH - 1]]);
+        println!("Keep Alive: {}", keep_alive);
+        println!("Protocol Name: {}", protocol_name);
+        println!("Protocol Level: {}", protocol_level);
+        println!("Connect Flags: {}", connect_flags);
+        ConnectHeader::new(protocol_name, protocol_level, connect_flags, keep_alive).unwrap()
+    }
 }
 
 #[cfg(test)]
@@ -190,5 +212,15 @@ mod mqtt_headers_tests {
     fn test_connect_header_new_invalid_protocol_name() {
         let header = ConnectHeader::new("MQT".to_string(), 4, 0, 60);
         assert_eq!(header, Err("Invalid Protocol Name".to_string()));
+    }
+
+    #[test]
+    fn test_connect_header_from_bytes() {
+        let data = vec![0x4D, 0x51, 0x54, 0x54, 0x04, 0x00, 0x00, 0x3C];
+        let header = ConnectHeader::from_bytes(&data);
+        assert_eq!(header.protocol_name, "MQTT");
+        assert_eq!(header.protocol_level, 4);
+        assert_eq!(header.connect_flags, 0);
+        assert_eq!(header.keep_alive, 60);
     }
 }
