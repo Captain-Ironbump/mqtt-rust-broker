@@ -24,14 +24,14 @@ pub struct SubscribePayload {
 struct Default;
 
 #[derive(Debug)]
-enum Payload {
+pub enum Payload {
     Connect(ConnectPayload),
     Publish(PublishPayload),
     Subscribe(SubscribePayload),
     Default(Default),
 }
 
-struct PayloadFactory;
+pub struct PayloadFactory;
 
 impl PayloadFactory {
     const WILL_FLAG: u8 = 0b00000100;
