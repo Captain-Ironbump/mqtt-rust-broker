@@ -145,7 +145,15 @@ impl VariableHeader for SubscribeHeader {
 }
 
 impl ConnectHeader {
+    const PROTOCOL_NAME_LENGTH: usize = 4;
 
+    // Helper function to increment the index and return the previous/old value
+    fn increment_index(idx: &mut usize, value: usize) -> usize {
+        let current_idx = *idx;
+        *idx += value;
+        current_idx
+    }
+    
     pub fn new(protocol_name: String, protocol_level: u8, connect_flags: u8, keep_alive: u16) -> Result<Self, String> {
         if protocol_name.len() != 4 && protocol_name != "MQTT" {
             return Err("Invalid Protocol Name".to_string());
@@ -158,11 +166,29 @@ impl ConnectHeader {
         }) 
     }
     pub fn from_bytes(data: &[u8]) -> Self {
+        let mut idx: usize = 0;
         // the date variable is expected to not hold the fixed header
-        let protocol_name = String::from_utf8(data[0..4].to_vec()).unwrap();
-        let protocol_level = data[4];
-        let connect_flags = data[5];
-        let keep_alive = u16::from_be_bytes([data[6], data[7]]);
+
+        let protocol_name = {
+            let start = Self::increment_index(&mut idx, Self::PROTOCOL_NAME_LENGTH);
+            String::from_utf8(data[start..start + Self::PROTOCOL_NAME_LENGTH].to_vec()).unwrap()
+        };
+
+        let protocol_level = {
+            let start = Self::increment_index(&mut idx, 1);
+            data[start]
+        };
+
+        let connect_flags = {
+            let start = Self::increment_index(&mut idx, 1);
+            data[start]
+        };
+
+        let keep_alive = {
+            let start = Self::increment_index(&mut idx, 2);
+            u16::from_be_bytes([data[start], data[start + 1]])
+        };
+
         println!("Keep Alive: {}", keep_alive);
         println!("Protocol Name: {}", protocol_name);
         println!("Protocol Level: {}", protocol_level);
@@ -171,7 +197,7 @@ impl ConnectHeader {
     }
 
     pub fn size(&self) -> usize {
-        self.protocol_name.len() + mem::size_of::<u8>() + mem::size_of::<u8>() + mem::size_of::<u16>()
+        Self::PROTOCOL_NAME_LENGTH + mem::size_of::<u8>() + mem::size_of::<u8>() + mem::size_of::<u16>()
     }
 }
 
