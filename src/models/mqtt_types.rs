@@ -79,7 +79,6 @@ mod packet_type_tests {
 #[derive(Debug, Clone)]
 pub struct MqttPacketDispatcher {
     pub handlers: HashMap<MqttPacketType, fn(&mut SplitSink<WebSocketStream<TcpStream>, Message>, &Vec<u8>)>,
-    pub clients: Vec<String> // List of connected clients
 }
 
 impl MqttPacketDispatcher {
@@ -100,7 +99,7 @@ impl MqttPacketDispatcher {
         handlers.insert(MqttPacketType::PingResp, MqttPacketDispatcher::handle_ping_resp);
         handlers.insert(MqttPacketType::Disconnect, MqttPacketDispatcher::handle_disconnect);
 
-        Ok(MqttPacketDispatcher { handlers, clients: Vec::new() })
+        Ok(MqttPacketDispatcher { handlers })
     }
 
 
