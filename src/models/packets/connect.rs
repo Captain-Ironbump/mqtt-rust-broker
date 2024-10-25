@@ -1,3 +1,5 @@
+use log::{info, warn, error};
+
 use crate::models::mqtt_headers::{MqttHeaders, ConnectHeader};
 use crate::models::mqtt_payloads::{Payload, ConnectPayload};
 use crate::models::mqtt_payloads::PayloadFactory;
@@ -21,16 +23,14 @@ impl Connect {
     pub fn from_bytes(data: Vec<u8>) -> Self {
         let fixed_header = MqttHeaders::parse(&data);
         let variable_header = ConnectHeader::from_bytes(&data[2..10]);
-        println!("Hello");
-        println!("{:?}", fixed_header);
-        println!("{:?}", variable_header);
+        info!("{:?}", fixed_header);
+        info!("{:?}", variable_header);
         let payload = PayloadFactory::parse_payload(&variable_header, data[10..].to_vec());
-        println!("{:?}", payload);
+        info!("{:?}", payload);
         //let connect_payload = match payload {
         //    Payload::Connect(connect_payload) => connect_payload, // Extract ConnectPayload
         //    _ => panic!("Expected ConnectPayload, found {:?}", payload), // Handle other cases
         //};
-
         Connect::new(fixed_header.unwrap(), variable_header, payload)
     }
 }

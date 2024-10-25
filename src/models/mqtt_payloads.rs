@@ -1,4 +1,5 @@
 use super::mqtt_headers::{ConnectHeader, PublishHeader, SubscribeHeader, VariableHeader};
+use log::{info, warn, error};
 
 #[derive(Debug)]
 pub struct ConnectPayload {
@@ -59,23 +60,23 @@ impl PayloadFactory {
             // take teh first two bytes of the payload data to get the length of the client id
             let mut payload_idx: usize = 0 as usize;
             let (client_id_length, client_id) = Self::extract_utf8_string(&payload_data, &mut payload_idx);
-            println!("Client ID: [{}] with a length of {}", client_id, client_id_length);
+            info!("Client ID: [{}] with a length of {}", client_id, client_id_length);
 
             if client_id_length == 0 {
                 //TODO: maybe allow for empty client id and generate a random one
                 //TODO: set Client Clean Session to 1 if client id is empty
                 //TODO: If the Client supplies a zero-byte ClientId with CleanSession set to 0, the Server MUST respond to the CONNECT Packet with a CONNACK return code 0x02 (Identifier rejected) and then close the Network Connection [MQTT-3.1.3-8].
-                panic!("Client ID cannot be empty");
+                error!("Client ID cannot be empty");
             }
             if client_id_length > 23 {
-                panic!("Client ID cannot be longer than 23 bytes");
+                error!("Client ID cannot be longer than 23 bytes");
             }
 
             let (will_topic, will_message) = if connect_header.connect_flags & Self::WILL_FLAG != 0 {
                 let (will_topic_length, will_topic) = Self::extract_utf8_string(&payload_data, &mut payload_idx);
                 let (will_message_length, will_message) = Self::extract_utf8_string(&payload_data, &mut payload_idx);
-                println!("Will Topic: [{}] with a length of {}", will_topic, will_topic_length);
-                println!("Will Message: [{}] with a length of {}", will_message, will_message_length);
+                info!("Will Topic: [{}] with a length of {}", will_topic, will_topic_length);
+                info!("Will Message: [{}] with a length of {}", will_message, will_message_length);
                 (will_topic, will_message)
             } else {
                 (String::new(), String::new())
@@ -83,7 +84,7 @@ impl PayloadFactory {
 
             let user_name = if connect_header.connect_flags & Self::USER_NAME_FLAG != 0 {
                 let (user_name_length, user_name) = Self::extract_utf8_string(&payload_data, &mut payload_idx);
-                println!("User Name: [{}] with a length of {}", user_name, user_name_length);
+                info!("User Name: [{}] with a length of {}", user_name, user_name_length);
                 user_name
             } else {
                 String::new()
@@ -91,7 +92,7 @@ impl PayloadFactory {
 
             let password = if connect_header.connect_flags & Self::PASSWORD_FLAG != 0 {
                 let (password_length, password) = Self::extract_utf8_string(&payload_data, &mut payload_idx);
-                println!("Password: [{}] with a length of {}", password, password_length);
+                info!("Password: [{}] with a length of {}", password, password_length);
                 password
             } else {
                 String::new()
@@ -111,11 +112,11 @@ impl PayloadFactory {
         } else if let Some(_subscribe_header) = variable_header.as_any().downcast_ref::<SubscribeHeader>() {
             let mut payload_idx: usize = 0 as usize;
             let (subscription_topic_length, subscription_topic) = Self::extract_utf8_string(&payload_data, &mut payload_idx);
-            println!("Subscription Topic: [{}] with a length of {}", subscription_topic, subscription_topic_length);
+            info!("Subscription Topic: [{}] with a length of {}", subscription_topic, subscription_topic_length);
             let mut qos = payload_data[payload_idx];
             // validate qos byte format top most 6 bits should be 0
             if qos & Self::QOS_MASK_INVALID != 0 {
-                panic!("Invalid QoS value");
+                error!("Invalid QoS value");
             }
             qos &= Self::QOS_MASK_VALID;
             Payload::Subscribe(SubscribePayload {
@@ -159,7 +160,7 @@ mod payload_tests {
                 assert_eq!(connect_payload.username.unwrap(), "");
                 assert_eq!(connect_payload.password.unwrap(), "");
             },
-            _ => panic!("Invalid payload type"),
+            _ => error!("Invalid payload type"),
         }
     }
 
@@ -187,7 +188,7 @@ mod payload_tests {
                 assert_eq!(connect_payload.username.unwrap(), "test");
                 assert_eq!(connect_payload.password.unwrap(), "test");
             },
-            _ => panic!("Invalid payload type"),
+            _ => error!("Invalid payload type"),
         }
     } 
 
@@ -203,7 +204,7 @@ mod payload_tests {
             Payload::Publish(publish_payload) => {
                 assert_eq!(publish_payload.payload, vec![0x00, 0x01, 0x02, 0x03]);
             },
-            _ => panic!("Invalid payload type"),
+            _ => error!("Invalid payload type"),
         }
     }
 
@@ -222,7 +223,7 @@ mod payload_tests {
                 assert_eq!(subscribe_payload.subscription_topic, "test");
                 assert_eq!(subscribe_payload.qos, 1);
             },
-            _ => panic!("Invalid payload type"),
+            _ => error!("Invalid payload type"),
         }
     }
 }

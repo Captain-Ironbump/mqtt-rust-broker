@@ -331,6 +331,7 @@ version = "0.1.0"
 dependencies = [
  "futures",
  "futures-util",
+ "log",
  "mqtt_packet_3_5",
  "tokio",
  "tokio-tungstenite",

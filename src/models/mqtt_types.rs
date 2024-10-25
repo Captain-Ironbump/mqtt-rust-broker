@@ -1,9 +1,15 @@
 use std::collections::HashMap;
 
 use futures::stream::SplitSink;
+use mqtt_packet_3_5::connect;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 use tokio::net::TcpStream;
+
+use log::{info, warn, error};
+
+use crate::models::packets::connect::Connect;
+use crate::models::mqtt_payloads::Payload;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MqttPacketType {
@@ -98,7 +104,14 @@ impl MqttPacketDispatcher {
 
         // Empty handler functions for each packet type
     fn handle_connect(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
-        
+        let connect = Connect::from_bytes(data.clone());
+        let connect_payload = match connect.payload as Payload {
+            Payload::Connect(connect_payload) => connect_payload,
+            _ => {
+                error!("Invalid payload type");
+                return;
+            }
+        };
     }
 
     fn handle_connack(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {

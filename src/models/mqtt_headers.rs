@@ -1,5 +1,7 @@
 use std::any::Any;
 use std::mem;
+use log::{info, warn, error};
+
 use crate::models::mqtt_types::MqttPacketType;
 
 
@@ -189,10 +191,10 @@ impl ConnectHeader {
             u16::from_be_bytes([data[start], data[start + 1]])
         };
 
-        println!("Keep Alive: {}", keep_alive);
-        println!("Protocol Name: {}", protocol_name);
-        println!("Protocol Level: {}", protocol_level);
-        println!("Connect Flags: {}", connect_flags);
+        info!("Keep Alive: {}", keep_alive);
+        info!("Protocol Name: {}", protocol_name);
+        info!("Protocol Level: {}", protocol_level);
+        info!("Connect Flags: {}", connect_flags);
         ConnectHeader::new(protocol_name, protocol_level, connect_flags, keep_alive).unwrap()
     }
 
