@@ -10,6 +10,7 @@ use log::{info, warn, error};
 
 use crate::models::packets::connect::Connect;
 use crate::models::mqtt_payloads::Payload;
+use crate::models::broker::Broker;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum MqttPacketType {
@@ -78,12 +79,12 @@ mod packet_type_tests {
 
 #[derive(Debug, Clone)]
 pub struct MqttPacketDispatcher {
-    pub handlers: HashMap<MqttPacketType, fn(&mut SplitSink<WebSocketStream<TcpStream>, Message>, &Vec<u8>)>,
+    pub handlers: HashMap<MqttPacketType, fn(&mut SplitSink<WebSocketStream<TcpStream>, Message>, &Vec<u8>, &mut Broker)>,
 }
 
 impl MqttPacketDispatcher {
     pub fn new() -> Result<Self, &'static str> {
-        let mut handlers: HashMap<MqttPacketType, fn(&mut SplitSink<WebSocketStream<TcpStream>, Message>, &Vec<u8>)> = HashMap::new();
+        let mut handlers: HashMap<MqttPacketType, fn(&mut SplitSink<WebSocketStream<TcpStream>, Message>, &Vec<u8>, &mut Broker)> = HashMap::new();
         handlers.insert(MqttPacketType::Connect, MqttPacketDispatcher::handle_connect);
         handlers.insert(MqttPacketType::ConnAck, MqttPacketDispatcher::handle_connack);
         handlers.insert(MqttPacketType::Publish, MqttPacketDispatcher::handle_publish);
@@ -104,7 +105,7 @@ impl MqttPacketDispatcher {
 
 
         // Empty handler functions for each packet type
-    fn handle_connect(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_connect(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         let connect = Connect::from_bytes(data.clone());
         let connect_payload = match connect.payload as Payload {
             Payload::Connect(connect_payload) => connect_payload,
@@ -113,58 +114,65 @@ impl MqttPacketDispatcher {
                 return;
             }
         };
-        
+        let client_id = connect_payload.client_id.unwrap().clone();
+        if broker.is_client_connected(&client_id) {
+            error!("Client already connected");
+            return;
+        }
+        broker.connect_client(&client_id);
+        info!("Client connected: with id: [{}]", client_id);
+        //TODO: Send CONNACK packet
     }
 
-    fn handle_connack(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_connack(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for ConnAck packet
     }
 
-    fn handle_publish(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_publish(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for Publish packet
     }
 
-    fn handle_puback(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_puback(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for PubAck packet
     }
 
-    fn handle_pubrec(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_pubrec(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for PubRec packet
     }
 
-    fn handle_pubrel(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_pubrel(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for PubRel packet
     }
 
-    fn handle_pubcomp(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_pubcomp(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for PubComp packet
     }
 
-    fn handle_subscribe(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_subscribe(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for Subscribe packet
     }
 
-    fn handle_suback(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_suback(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for SubAck packet
     }
 
-    fn handle_unsubscribe(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_unsubscribe(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for Unsubscribe packet
     }
 
-    fn handle_unsuback(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_unsuback(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for UnsubAck packet
     }
 
-    fn handle_ping_req(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_ping_req(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for PingReq packet
     }
 
-    fn handle_ping_resp(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_ping_resp(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for PingResp packet
     }
 
-    fn handle_disconnect(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>) {
+    fn handle_disconnect(sender: &mut SplitSink<WebSocketStream<TcpStream>, Message>, data: &Vec<u8>, broker: &mut Broker) {
         // Empty function for Disconnect packet
     }
 }
