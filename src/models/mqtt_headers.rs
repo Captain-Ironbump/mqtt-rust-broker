@@ -10,6 +10,7 @@ pub struct MqttHeaders {
     pub packet_type: MqttPacketType,
     pub flags: u8,
     pub remaining_length: u32,
+    pub remaining_length_bytes: usize,
 }
 
 impl MqttHeaders {
@@ -55,10 +56,12 @@ impl MqttHeaders {
             index += 1;
         }
 
+
         Ok(MqttHeaders {
             packet_type,
             flags,
             remaining_length: value,
+            remaining_length_bytes: index,
         })
     }
 
@@ -88,6 +91,10 @@ impl MqttHeaders {
     pub fn size(&self) -> usize {
         mem::size_of::<u8>() + mem::size_of::<u32>()
     }
+
+    pub fn incomming_byte_size(&self) -> usize {
+        self.remaining_length_bytes + 1
+    }
 }
 
 pub trait VariableHeader {
@@ -115,6 +122,11 @@ pub struct SubscribeHeader {
     pub packet_id: u16,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ConnAckHeader {
+    pub session_present: bool,
+    pub return_code: u8,
+}
 
 impl VariableHeader for ConnectHeader {
     fn header_type(&self) -> MqttPacketType {
@@ -139,6 +151,17 @@ impl VariableHeader for PublishHeader {
 impl VariableHeader for SubscribeHeader {
     fn header_type(&self) -> MqttPacketType {
         MqttPacketType::Subscribe
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+
+impl VariableHeader for ConnAckHeader {
+    fn header_type(&self) -> MqttPacketType {
+        MqttPacketType::ConnAck
     }
 
     fn as_any(&self) -> &dyn Any {
@@ -198,8 +221,34 @@ impl ConnectHeader {
         ConnectHeader::new(protocol_name, protocol_level, connect_flags, keep_alive).unwrap()
     }
 
-    pub fn size(&self) -> usize {
+    pub fn size() -> usize {
         Self::PROTOCOL_NAME_LENGTH + mem::size_of::<u8>() + mem::size_of::<u8>() + mem::size_of::<u16>()
+    }
+}
+
+impl ConnAckHeader {
+    const SESSION_PRESENT_MASK: u8 = 0x01;
+    const SESSION_PRESENT_INVALID_MASK: u8 = 0xFE;
+
+    pub fn new(session_present: bool, return_code: u8) -> Self {
+        Self {
+            session_present,
+            return_code,
+        }
+    }
+
+    pub fn from_bytes(data: &[u8]) -> Self {
+        let session_present = if data[0] & Self::SESSION_PRESENT_INVALID_MASK == 0 && data[0] & Self::SESSION_PRESENT_MASK == 1 {
+            true
+        } else {
+            false
+        };
+        let return_code = data[1];
+        ConnAckHeader::new(session_present, return_code)
+    }
+
+    pub fn incomming_byte_size() -> usize {
+        mem::size_of::<u8>() + mem::size_of::<u8>()
     }
 }
 
@@ -222,6 +271,7 @@ mod mqtt_headers_tests {
             packet_type: MqttPacketType::Connect,
             flags: 0,
             remaining_length: 10,
+            remaining_length_bytes: 2,
         };
         let buffer = headers.to_bytes();
         assert_eq!(buffer, vec![0x10, 0x0A]);
@@ -260,5 +310,21 @@ mod mqtt_headers_tests {
         assert_eq!(header.protocol_level, 4);
         assert_eq!(header.connect_flags, 0xC4);
         assert_eq!(header.keep_alive, 60);
+    }
+
+    #[test]
+    fn test_connack_header_from_bytes_valid() {
+        let data = vec![0x01, 0x00];
+        let header = ConnAckHeader::from_bytes(&data);
+        assert_eq!(header.session_present, true);
+        assert_eq!(header.return_code, 0);
+    }
+
+    #[test]
+    fn test_connack_header_from_bytes_invalid() {
+        let data = vec![0xA1, 0x00];
+        let header = ConnAckHeader::from_bytes(&data);
+        assert_eq!(header.session_present, false);
+        assert_eq!(header.return_code, 0);
     }
 }
