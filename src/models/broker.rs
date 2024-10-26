@@ -5,6 +5,7 @@ pub struct Broker {
     clients: Vec<String>,
 }
 
+
 impl Broker {
     pub fn new() -> Self {
         Broker {
