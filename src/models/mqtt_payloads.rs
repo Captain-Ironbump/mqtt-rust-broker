@@ -22,7 +22,7 @@ pub struct SubscribePayload {
 }
 
 #[derive(Debug, Default)]
-struct Default;
+pub struct Default;
 
 #[derive(Debug)]
 pub enum Payload {

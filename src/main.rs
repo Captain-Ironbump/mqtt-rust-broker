@@ -1,12 +1,15 @@
 mod models;
 
-use models::mqtt_types::{MqttPacketType, MqttPacketDispatcher};
+use futures::SinkExt;
+use models::{broker::Broker, mqtt_types::{MqttPacketDispatcher, MqttPacketType}};
 
 use tokio::net::TcpListener;
 use tokio::spawn;
 use tokio_tungstenite::{accept_async, tungstenite::protocol::Message};
 use futures_util::StreamExt;
-use std::{ops::Deref, sync::Arc};
+use std::{ops::Deref, sync::{Arc, Mutex}};
+
+use log::{info, warn, error};
   
 const SERVER_ADDR: &str = "127.0.0.1";
 const PORT: &str = "1883";
@@ -17,12 +20,16 @@ async fn main() -> std::io::Result<()> {
     let dispatcher = Arc::new(MqttPacketDispatcher::new().expect("Failed to create dispatcher")); 
     let listener = TcpListener::bind(format!("{}:{}", SERVER_ADDR, PORT)).await?;
     println!("WebSocket server listening on ws://{}:{}", SERVER_ADDR, PORT);
+
+    let broker = Arc::new(Mutex::new(Broker::new()));
+
     while let Ok((stream, _)) = listener.accept().await {
         println!("New client connected: {:?}", stream.peer_addr());
         let dispatcher_clone = Arc::clone(&dispatcher);
+        let broker_clone = Arc::clone(&broker);
         spawn(async move {
             if let Ok(ws_stream) = accept_async(stream).await {
-                connection_handler(ws_stream, dispatcher_clone).await;
+                connection_handler(ws_stream, dispatcher_clone, broker_clone).await;
             } else {
                 eprintln!("Failed to upgrade TCP connection to WebSocket")
             }
@@ -33,7 +40,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 
-async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>, dispatcher: Arc<MqttPacketDispatcher>) {
+async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>, dispatcher: Arc<MqttPacketDispatcher>, broker: Arc<Mutex<Broker>>) {
     let (mut sender, mut receiver) = ws_stream.split(); // Split the stream
     while let Some(message) = receiver.next().await {
         match message {
@@ -45,7 +52,31 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
                     message_type, message_length
                 );
                 let function = dispatcher.deref().handlers.get(&MqttPacketType::from_u8(message_type).unwrap()).unwrap();
-                function(&mut sender, &data);
+                
+                // if let Ok(mut broker_guard) = broker.try_lock() {
+                //     function(&data, &mut *broker_guard);
+                // } else {
+                //     error!("Failed to acquire lock on broker: it's already in use.");
+                // }
+
+                let packet = if let Ok(mut broker_guard) = broker.try_lock() {
+                    let packet = function(&data, &mut *broker_guard);
+                    drop(broker_guard);
+                    Some(packet)
+                } else {
+                    error!("Failed to acquire lock on broker: it's already in use.");
+                    None
+                };
+
+                if let Some(ref packet_data) = packet {
+                    if sender.send(Message::Binary(packet_data.to_vec())).await.is_err() {
+                        error!("Failed to send packet of type: {:?}", packet_data[0] >> 4)
+                    } else {
+                        info!("Respoonded to Packet type: {:?}", message_type)
+                    }
+                }
+
+                
                 
                 
                 // match message_type {

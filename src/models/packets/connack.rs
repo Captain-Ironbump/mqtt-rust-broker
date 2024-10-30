@@ -24,4 +24,13 @@ impl ConnAck {
         let payload = PayloadFactory::parse_payload(&variable_header, data[0..0].to_vec());
         ConnAck::new(fixed_header.unwrap(), variable_header, payload)
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        let fixed_header_buffer = self.fixed_header.to_bytes();
+        let variable_header_buffer = self.variable_header.to_bytes();
+        buffer.extend(fixed_header_buffer);
+        buffer.extend(variable_header_buffer);
+        buffer
+    }
 }

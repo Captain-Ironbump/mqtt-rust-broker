@@ -1,6 +1,6 @@
 use core::panic;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Broker {
     clients: Vec<String>,
 }

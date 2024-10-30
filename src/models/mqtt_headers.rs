@@ -14,6 +14,15 @@ pub struct MqttHeaders {
 }
 
 impl MqttHeaders {
+
+    pub fn new(packet_type: MqttPacketType, flags: u8, remaining_length: u32) -> Self {
+        MqttHeaders {
+            packet_type,
+            flags,
+            remaining_length,
+            remaining_length_bytes: 1, // TODO: calculate the length here again
+        }
+    }
     // byte1: message type (4 bits) + flags (4 bits)
     // byte2: remaining length (variable length encoding)
     pub fn parse(buffer: &[u8]) -> Result<Self, &'static str> {
@@ -247,9 +256,21 @@ impl ConnAckHeader {
         ConnAckHeader::new(session_present, return_code)
     }
 
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        let session_present_as_byte = if self.session_present == true {
+            0b00000001 as u8
+        } else {
+            0b00000000 as u8
+        }; // TODO: cleaner way?
+        buffer.push(session_present_as_byte);
+        buffer.push(self.return_code);
+        buffer
+    }
+
     pub fn incomming_byte_size() -> usize {
         mem::size_of::<u8>() + mem::size_of::<u8>()
-    }
+    }    
 }
 
 #[cfg(test)]
