@@ -10,13 +10,16 @@ use futures_util::StreamExt;
 use std::{ops::Deref, sync::{Arc, Mutex}};
 
 use log::{info, warn, error};
-  
+use env_logger;
+
 const SERVER_ADDR: &str = "127.0.0.1";
 const PORT: &str = "1883";
 
 
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
+    env_logger::init();
+    info!("logger initiated");
     let dispatcher = Arc::new(MqttPacketDispatcher::new().expect("Failed to create dispatcher")); 
     let listener = TcpListener::bind(format!("{}:{}", SERVER_ADDR, PORT)).await?;
     println!("WebSocket server listening on ws://{}:{}", SERVER_ADDR, PORT);
@@ -28,10 +31,14 @@ async fn main() -> std::io::Result<()> {
         let dispatcher_clone = Arc::clone(&dispatcher);
         let broker_clone = Arc::clone(&broker);
         spawn(async move {
-            if let Ok(ws_stream) = accept_async(stream).await {
-                connection_handler(ws_stream, dispatcher_clone, broker_clone).await;
-            } else {
-                eprintln!("Failed to upgrade TCP connection to WebSocket")
+            match accept_async(stream).await {
+                Ok(ws_stream) => {
+                    info!("WebSocket connecion established");
+                    connection_handler(ws_stream, dispatcher_clone, broker_clone).await;
+                }
+                Err(e) => {
+                    error!("Failed to upgrade TCP connection to WebSocket: {}", e);
+                }
             }
         });
     }
@@ -42,9 +49,12 @@ async fn main() -> std::io::Result<()> {
 
 async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio::net::TcpStream>, dispatcher: Arc<MqttPacketDispatcher>, broker: Arc<Mutex<Broker>>) {
     let (mut sender, mut receiver) = ws_stream.split(); // Split the stream
+    info!("sender: [{:?}]; receiver: [{:?}]", sender, receiver);
     while let Some(message) = receiver.next().await {
+        info!("Message: [{:?}]", message);
         match message {
             Ok(Message::Binary(data)) => {
+                info!("We go here");
                 let message_type = data[0] >> 4;  // Extract message type from the first byte
                 let message_length = data[1];     // Extract message length from the second byte
                 println!(
@@ -69,6 +79,7 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
                 };
 
                 if let Some(ref packet_data) = packet {
+                    info!("packet_data: [{:?}]", packet_data);
                     if sender.send(Message::Binary(packet_data.to_vec())).await.is_err() {
                         error!("Failed to send packet of type: {:?}", packet_data[0] >> 4)
                     } else {
@@ -103,6 +114,10 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
             }
             Ok(Message::Text(_)) => {
                 eprintln!("Received text message, but expected binary data.");
+            }
+            Ok(Message::Close(_)) => {
+                warn!("Received close frame from client, closing connection.");
+                break;
             }
             Ok(_) => {
                 eprintln!("Received unsupported message type.");
