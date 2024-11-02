@@ -22,12 +22,12 @@ async fn main() -> std::io::Result<()> {
     info!("logger initiated");
     let dispatcher = Arc::new(MqttPacketDispatcher::new().expect("Failed to create dispatcher")); 
     let listener = TcpListener::bind(format!("{}:{}", SERVER_ADDR, PORT)).await?;
-    println!("WebSocket server listening on ws://{}:{}", SERVER_ADDR, PORT);
+    info!("WebSocket server listening on ws://{}:{}", SERVER_ADDR, PORT);
 
     let broker = Arc::new(Mutex::new(Broker::new()));
 
     while let Ok((stream, _)) = listener.accept().await {
-        println!("New client connected: {:?}", stream.peer_addr());
+        info!("New client connected: {:?}", stream.peer_addr());
         let dispatcher_clone = Arc::clone(&dispatcher);
         let broker_clone = Arc::clone(&broker);
         spawn(async move {
@@ -57,7 +57,7 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
                 info!("We go here");
                 let message_type = data[0] >> 4;  // Extract message type from the first byte
                 let message_length = data[1];     // Extract message length from the second byte
-                println!(
+                info!(
                     "Received WebSocket message of type {} and length {}",
                     message_type, message_length
                 );
@@ -113,23 +113,23 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
                 // }
             }
             Ok(Message::Text(_)) => {
-                eprintln!("Received text message, but expected binary data.");
+                error!("Received text message, but expected binary data.");
             }
             Ok(Message::Close(_)) => {
                 warn!("Received close frame from client, closing connection.");
                 break;
             }
             Ok(_) => {
-                eprintln!("Received unsupported message type.");
+                error!("Received unsupported message type.");
             }
             Err(e) => {
-                eprintln!("WebSocket connection error: {:?}", e);
+                error!("WebSocket connection error: {:?}", e);
                 break;
             }
         }
     }
 
-    eprintln!("Client disconnected.");
+    error!("Client disconnected.");
 }
 
 

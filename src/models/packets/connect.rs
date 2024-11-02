@@ -12,6 +12,8 @@ pub struct Connect {
 }
 
 impl Connect {
+    const MINIMUM_REMAINING_LENGTH: u32 = 7;
+
     pub fn new(fixed_header: MqttHeaders, variable_header: ConnectHeader, payload: Payload) -> Self {
         Connect {
             fixed_header,
@@ -22,6 +24,9 @@ impl Connect {
 
     pub fn from_bytes(data: Vec<u8>) -> Self {
         let fixed_header = MqttHeaders::parse(&data);
+        if fixed_header.unwrap().remaining_length <= Self::MINIMUM_REMAINING_LENGTH {
+           error!("The CONNECT packets remeining length is to short!");
+        }
         let variable_header = ConnectHeader::from_bytes(&data[2..10]);
         info!("{:?}", fixed_header);
         info!("{:?}", variable_header);
@@ -42,7 +47,7 @@ mod connect_tests {
     #[test]
     fn test_connect_from_bytes() {
         //let data = vec![0x10, 0x00, 0x04, 0x4D, 0x51, 0x54, 0x54, 0x04, 0x02, 0x00, 0x3C, 0x00, 0x0A, 0x74, 0x65, 0x73, 0x74, 0x75, 0x73, 0x65, 0x72, 0x6E, 0x61, 0x6D, 0x65, 0x00, 0x0A, 0x74, 0x65, 0x73, 0x74, 0x75, 0x73, 0x65, 0x72, 0x70, 0x77, 0x64];
-        let header_data = vec![0x10, 0x00];
+        let header_data = vec![0x10, 0x26];
         let connect_variable_header_data = vec![0x4D, 0x51, 0x54, 0x54, 0x04, 0xC4, 0x00, 0x3C];
         let connect_payload_data: Vec<u8> = vec![
             0x00, 0x04, 0x74, 0x65, 0x73, 0x74, // Client ID: test
