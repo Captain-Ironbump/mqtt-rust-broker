@@ -143,6 +143,7 @@ impl MqttPacketDispatcher {
     fn handle_connack(data: &Vec<u8>, broker: &mut Broker) -> Vec<u8> {
         // Empty function for ConnAck packet
         let packet = Vec::new();
+        error!("ConnAck packet not a recive packet for server!");
         packet
     }
 

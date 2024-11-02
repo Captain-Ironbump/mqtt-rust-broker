@@ -62,7 +62,7 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
                     message_type, message_length
                 );
                 let function = dispatcher.deref().handlers.get(&MqttPacketType::from_u8(message_type).unwrap()).unwrap();
-                
+                 
                 // if let Ok(mut broker_guard) = broker.try_lock() {
                 //     function(&data, &mut *broker_guard);
                 // } else {
@@ -79,6 +79,10 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
                 };
 
                 if let Some(ref packet_data) = packet {
+                    if packet_data.len() == 0 {
+                        error!("Not a real packet data, no sending");
+                        break;
+                    }
                     info!("packet_data: [{:?}]", packet_data);
                     if sender.send(Message::Binary(packet_data.to_vec())).await.is_err() {
                         error!("Failed to send packet of type: {:?}", packet_data[0] >> 4)
