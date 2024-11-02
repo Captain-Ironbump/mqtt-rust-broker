@@ -116,12 +116,13 @@ impl MqttPacketDispatcher {
                 return Vec::new();
             }
         };
-        let client_id = connect_payload.client_id.unwrap().clone();
+        let client_id = connect_payload.client_id.unwrap().clone(); 
         if broker.is_client_connected(&client_id) {
-            error!("Client already connected");
+            error!("Client already connected...client will be removed");
+            broker.remove_client(&client_id);
             return Vec::new();
         }
-        broker.connect_client(&client_id);
+        broker.add_client(&client_id, connect.variable_header.keep_alive);
         info!("Client connected: with id: [{}]", client_id);
         //TODO: Send CONNACK packet
         let ack_fixed_header = MqttHeaders::new(MqttPacketType::ConnAck, 0b0000, 2);
