@@ -81,7 +81,7 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
                 if let Some(ref packet_data) = packet {
                     if packet_data.len() == 0 {
                         error!("Not a real packet data, no sending");
-                        break;
+                        continue;
                     }
                     info!("packet_data: [{:?}]", packet_data);
                     if sender.send(Message::Binary(packet_data.to_vec())).await.is_err() {
