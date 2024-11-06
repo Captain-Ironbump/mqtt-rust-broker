@@ -3,6 +3,7 @@ use std::future::Future;
 
 use futures::stream::SplitSink;
 use futures::SinkExt;
+use tokio::sync::oneshot;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 use tokio::net::TcpStream;
@@ -30,6 +31,13 @@ pub enum MqttPacketType {
     PingReq = 12,
     PingResp = 13,
     Disconnect = 14,
+}
+
+pub enum BrokerCommand {
+    Connect {
+        packet: Connect,
+        responder: oneshot::Sender<Result<ConnAck, String>>,
+    }
 }
 
 impl MqttPacketType {

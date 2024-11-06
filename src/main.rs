@@ -1,9 +1,9 @@
 mod models;
 
 use futures::SinkExt;
-use models::{broker::Broker, mqtt_types::{MqttPacketDispatcher, MqttPacketType}};
+use models::{broker::Broker, mqtt_types::{BrokerCommand, MqttPacketDispatcher, MqttPacketType}, packets::connect::Connect};
 
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::{mpsc, oneshot}};
 use tokio::spawn;
 use tokio_tungstenite::{accept_async, tungstenite::protocol::Message};
 use futures_util::StreamExt;
@@ -134,6 +134,34 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
     }
 
     error!("Client disconnected.");
+}
+
+fn parse_packet(data: &Vec<u8>) -> Result<BrokerCommand, String> {
+    if data.is_empty() {
+        return Err("Empty data".to_string());
+    }
+
+    let message_type = data[0] >> 4;  // Extract message type from the first byte
+    let message_length = data[1];     // Extract message length from the second byte
+    info!(
+        "Received WebSocket message of type {} and length {}",
+        message_type, message_length
+    );
+    match message_type {
+        1 => {
+            // CONNECT message
+            let connect_packet = Connect::from_bytes(data.clone());
+            
+
+            Ok(BrokerCommand::Connect{
+                packet: connect_packet,
+                responder: oneshot::channel().0,
+            })
+        }
+        _ => {
+            Err("Unknown message type".to_string())
+        }
+    }
 }
 
 

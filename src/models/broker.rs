@@ -1,7 +1,10 @@
 use core::panic;
 use std::{collections::{HashMap, HashSet}, time::{Duration, SystemTime}};
 
-use log::info;
+use log::{info, error};
+use tokio::sync::mpsc;
+
+use super::{mqtt_payloads::Payload, mqtt_types::BrokerCommand};
 
 #[derive(Debug)]
 enum ConnectionStatus {
@@ -42,6 +45,26 @@ impl ClientState {
 #[derive(Debug)]
 pub struct Broker {
     clients: HashMap<String, ClientState>,
+}
+
+impl Broker {
+    async fn run(mut self, mut command_rx: mpsc::Receiver<BrokerCommand>) {
+        while let Some(command) = command_rx.recv().await {
+            match command {
+                BrokerCommand::Connect { packet, responder } => {
+                    let payload = packet.payload;
+                    let connect_payload = match payload as Payload {
+                        Payload::Connect(connect_payload) => connect_payload.client_id,
+                        _ => {
+                            error!("Invalid payload type");
+                            return;
+                        }                    
+                    };
+                }
+            }
+        }
+    }
+
 }
 
 
