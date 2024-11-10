@@ -33,11 +33,24 @@ pub enum MqttPacketType {
     Disconnect = 14,
 }
 
+pub enum PublishActions {
+    None = 0,
+    PublishAck = 1,
+    PublishRec = 2,
+}
+
 pub enum BrokerCommand {
     Connect {
         packet: Connect,
         responder: oneshot::Sender<Result<ConnAck, String>>,
-    }
+    },
+    ConnAck {
+        responder: oneshot::Sender<Result<(), String>>,
+    },
+    Publish {
+        packet: Publish,
+        responder: oneshot::Sender<Result<PublishActions, String>>,
+    },
 }
 
 impl MqttPacketType {

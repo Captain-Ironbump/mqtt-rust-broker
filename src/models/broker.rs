@@ -4,7 +4,8 @@ use std::{collections::{HashMap, HashSet}, time::{Duration, SystemTime}};
 use log::{info, error};
 use tokio::sync::mpsc;
 
-use super::{mqtt_payloads::Payload, mqtt_types::BrokerCommand};
+use super::{mqtt_payloads::Payload, mqtt_types::BrokerCommand, packets::connack::ConnAck};
+use crate::models::packets::connack;
 
 #[derive(Debug)]
 enum ConnectionStatus {
@@ -52,15 +53,28 @@ impl Broker {
         while let Some(command) = command_rx.recv().await {
             match command {
                 BrokerCommand::Connect { packet, responder } => {
+                    let variable_header = packet.variable_header;
                     let payload = packet.payload;
                     let connect_payload = match payload as Payload {
-                        Payload::Connect(connect_payload) => connect_payload.client_id,
+                        Payload::Connect(connect_payload) => connect_payload,
                         _ => {
-                            error!("Invalid payload type");
-                            return;
+                            let _ = responder.send(Err("Invalid payload".to_string()));
+                            continue;
                         }                    
                     };
+                    if let Some(client_id) = connect_payload.client_id {
+                        self.add_client(&client_id, variable_header.keep_alive);
+                        let connack = ConnAck::new_success(&variable_header);
+                        let _ = responder.send(Ok(connack));     
+                    } else {
+                        let _ = responder.send(Err("Client ID not found".to_string()));
+                    } 
                 }
+                BrokerCommand::ConnAck { responder } => {
+                    error!("Received CONNACK packet, but not expected");
+                    let _ = responder.send(Err("Broker should never recieve a CONNACK packet".to_string()));
+                },
+                BrokerCommand::Publish { packet, responder }
             }
         }
     }

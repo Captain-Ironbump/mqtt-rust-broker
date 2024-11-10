@@ -1,6 +1,7 @@
-use crate::models::mqtt_headers::MqttHeaders;
+use crate::models::mqtt_headers::{ConnectHeader, MqttHeaders};
 use crate::models::mqtt_payloads::{Payload, PayloadFactory};
 use crate::models::mqtt_headers::ConnAckHeader;
+use crate::models::mqtt_types::MqttPacketType;
 
 pub struct ConnAck {
     pub fixed_header: MqttHeaders,
@@ -32,5 +33,17 @@ impl ConnAck {
         buffer.extend(fixed_header_buffer);
         buffer.extend(variable_header_buffer);
         buffer
+    }
+
+    pub fn new_success(connect_header: &ConnectHeader) -> Self {
+        let (session_present, return_code) = if connect_header.connect_flags & 0b00000010 == 1 {
+            (false, 0b00000000)
+        } else {
+            (true, 0b00000000) // TODO: check doku and make more checks here
+        };
+        
+        let fixed_header = MqttHeaders::new(MqttPacketType::ConnAck, 0b0000, 2);
+        let variable_header = ConnAckHeader::new(session_present, return_code);
+        ConnAck::new(fixed_header, variable_header, Payload::Default(Default::default()))
     }
 }

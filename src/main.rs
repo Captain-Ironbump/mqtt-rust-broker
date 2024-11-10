@@ -158,6 +158,19 @@ fn parse_packet(data: &Vec<u8>) -> Result<BrokerCommand, String> {
                 responder: oneshot::channel().0,
             })
         }
+        2 => {
+            // CONNACK message
+            Ok(BrokerCommand::ConnAck{
+                responder: oneshot::channel().0,
+            })
+        },
+        3 => {
+            // PUBLISH message
+            Ok(BrokerCommand::Publish{
+                packet: ,
+                responder: oneshot::channel().0,
+            })
+        },
         _ => {
             Err("Unknown message type".to_string())
         }

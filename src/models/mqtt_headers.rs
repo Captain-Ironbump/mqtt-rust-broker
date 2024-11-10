@@ -199,6 +199,7 @@ impl ConnectHeader {
             keep_alive,
         }) 
     }
+
     pub fn from_bytes(data: &[u8]) -> Self {
         let mut idx: usize = 0;
         // the date variable is expected to not hold the fixed header
@@ -271,6 +272,41 @@ impl ConnAckHeader {
     pub fn incomming_byte_size() -> usize {
         mem::size_of::<u8>() + mem::size_of::<u8>()
     }    
+}
+
+impl PublishHeader {
+
+    // Helper function to increment the index and return the previous/old value
+    fn increment_index(idx: &mut usize, value: usize) -> usize {
+        let current_idx = *idx;
+        *idx += value;
+        current_idx
+    }
+
+    pub fn from_bytes(data: &[u8]) -> Self {
+        let mut idx: usize = 0;
+        let topic_name_length = {
+            let start = Self::increment_index(&mut idx, 2);
+            data[start]       
+        };
+
+        let topic_name = {
+            let start = Self::increment_index(&mut idx, topic_name_length as usize);
+            String::from_utf8(data[start..start + topic_name_length as usize].to_vec()).unwrap()
+        };
+
+        let packet_id = {
+            let start = Self::increment_index(&mut idx, 2);
+            u16::from_be_bytes([data[start], data[start + 1]])
+        };
+
+        info!("Topic Name: {}", topic_name);
+        info!("Packet ID: {}", packet_id);
+        PublishHeader {
+            topic_name,
+            packet_id,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -347,5 +383,13 @@ mod mqtt_headers_tests {
         let header = ConnAckHeader::from_bytes(&data);
         assert_eq!(header.session_present, false);
         assert_eq!(header.return_code, 0);
+    }
+
+    #[test]
+    fn test_publish_header_from_bytes() {
+        let data = vec![0x00, 0x04, 0x74, 0x65, 0x73, 0x74, 0x00, 0x01];
+        let header = PublishHeader::from_bytes(&data);
+        assert_eq!(header.topic_name, "test");
+        assert_eq!(header.packet_id, 1);
     }
 }
