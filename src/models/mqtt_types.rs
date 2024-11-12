@@ -11,7 +11,7 @@ use tokio::net::TcpStream;
 use log::{info, warn, error};
 use crate::models::mqtt_payloads::Default;
 use crate::models::mqtt_headers::{ConnAckHeader, ConnectHeader, MqttHeaders};
-use crate::models::packets::{connect::Connect, connack::ConnAck};
+use crate::models::packets::{connect::Connect, connack::ConnAck, publish::Publish};
 use crate::models::mqtt_payloads::{Payload, PayloadFactory};
 use crate::models::broker::Broker;
 

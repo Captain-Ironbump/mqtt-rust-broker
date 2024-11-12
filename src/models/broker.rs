@@ -55,7 +55,7 @@ impl Broker {
                 BrokerCommand::Connect { packet, responder } => {
                     let variable_header = packet.variable_header;
                     let payload = packet.payload;
-                    let connect_payload = match payload as Payload {
+                    let connect_payload = match payload {
                         Payload::Connect(connect_payload) => connect_payload,
                         _ => {
                             let _ = responder.send(Err("Invalid payload".to_string()));
@@ -74,7 +74,7 @@ impl Broker {
                     error!("Received CONNACK packet, but not expected");
                     let _ = responder.send(Err("Broker should never recieve a CONNACK packet".to_string()));
                 },
-                BrokerCommand::Publish { packet, responder }
+                BrokerCommand::Publish { packet, responder } => todo!(),
             }
         }
     }

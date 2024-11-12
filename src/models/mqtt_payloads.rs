@@ -197,6 +197,7 @@ mod payload_tests {
         let publish_header = PublishHeader {
             topic_name: "test".to_string(),
             packet_id: 0,
+            topic_name_length: 4,
         };
         let payload_data: Vec<u8> = vec![0x00, 0x01, 0x02, 0x03];
         let payload = PayloadFactory::parse_payload(&publish_header, payload_data);

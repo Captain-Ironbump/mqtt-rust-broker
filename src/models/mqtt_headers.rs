@@ -124,6 +124,7 @@ pub struct ConnectHeader {
 pub struct PublishHeader {
     pub topic_name: String,
     pub packet_id: u16,
+    pub topic_name_length: u16, // only used to calculate the size
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -283,11 +284,16 @@ impl PublishHeader {
         current_idx
     }
 
+    pub fn size(&self) -> usize {
+        self.topic_name_length as usize + mem::size_of::<u16>()
+    }
+
     pub fn from_bytes(data: &[u8]) -> Self {
         let mut idx: usize = 0;
+
         let topic_name_length = {
             let start = Self::increment_index(&mut idx, 2);
-            data[start]       
+            u16::from_be_bytes([data[start], data[start + 1]])
         };
 
         let topic_name = {
@@ -305,6 +311,7 @@ impl PublishHeader {
         PublishHeader {
             topic_name,
             packet_id,
+            topic_name_length,
         }
     }
 }
@@ -387,9 +394,12 @@ mod mqtt_headers_tests {
 
     #[test]
     fn test_publish_header_from_bytes() {
-        let data = vec![0x00, 0x04, 0x74, 0x65, 0x73, 0x74, 0x00, 0x01];
+        let data = vec![0x00, 0x04, 0x74, 0x65, 0x73, 0x74, 0x00, 0x01, 0x00, 0x01];
         let header = PublishHeader::from_bytes(&data);
+        println!("{:?}", header);
         assert_eq!(header.topic_name, "test");
         assert_eq!(header.packet_id, 1);
+        assert_eq!(header.topic_name_length, 4);
+        assert_eq!(header.size(), 6);
     }
 }

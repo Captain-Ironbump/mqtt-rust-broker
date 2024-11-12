@@ -1,7 +1,7 @@
 mod models;
 
 use futures::SinkExt;
-use models::{broker::Broker, mqtt_types::{BrokerCommand, MqttPacketDispatcher, MqttPacketType}, packets::connect::Connect};
+use models::{broker::Broker, mqtt_types::{BrokerCommand, MqttPacketDispatcher, MqttPacketType}, packets::connect::Connect, packets::publish::Publish};
 
 use tokio::{net::TcpListener, sync::{mpsc, oneshot}};
 use tokio::spawn;
@@ -166,8 +166,10 @@ fn parse_packet(data: &Vec<u8>) -> Result<BrokerCommand, String> {
         },
         3 => {
             // PUBLISH message
+            let publish_packet = Publish::from_bytes(data.clone());
+
             Ok(BrokerCommand::Publish{
-                packet: ,
+                packet: publish_packet,
                 responder: oneshot::channel().0,
             })
         },
