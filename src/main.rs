@@ -166,7 +166,11 @@ fn parse_packet(data: &Vec<u8>) -> Result<BrokerCommand, String> {
         },
         3 => {
             // PUBLISH message
+<<<<<<< Updated upstream
             let publish_packet = Publish::from_bytes(data.clone());
+=======
+            let publish_packet = models::packets::publish::Publish::from_bytes(data.clone());
+>>>>>>> Stashed changes
 
             Ok(BrokerCommand::Publish{
                 packet: publish_packet,
