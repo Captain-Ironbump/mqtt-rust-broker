@@ -7,7 +7,7 @@ use tokio::sync::oneshot;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 use tokio::net::TcpStream;
-
+use tokio::sync::mpsc::Sender;
 use log::{info, warn, error};
 use crate::models::mqtt_payloads::Default;
 use crate::models::mqtt_headers::{ConnAckHeader, ConnectHeader, MqttHeaders};
@@ -42,6 +42,7 @@ pub enum PublishActions {
 pub enum BrokerCommand {
     Connect {
         packet: Connect,
+        ws_sender: Sender<Message>,
         responder: oneshot::Sender<Result<ConnAck, String>>,
     },
     ConnAck {
@@ -49,7 +50,7 @@ pub enum BrokerCommand {
     },
     Publish {
         packet: Publish,
-        responder: oneshot::Sender<Result<PublishActions, String>>,
+        responder: oneshot::Sender<Result<Publish, String>>,
     },
 }
 
@@ -143,7 +144,7 @@ impl MqttPacketDispatcher {
             broker.remove_client(&client_id);
             return Vec::new();
         }
-        broker.add_client(&client_id, connect.variable_header.keep_alive);
+        //broker.add_client(&client_id, connect.variable_header.keep_alive);
         info!("Client connected: with id: [{}]", client_id);
         //TODO: Send CONNACK packet
         let ack_fixed_header = MqttHeaders::new(MqttPacketType::ConnAck, 0b0000, 2);

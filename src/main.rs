@@ -7,7 +7,7 @@ use tokio::{net::TcpListener, sync::{mpsc, oneshot}};
 use tokio::spawn;
 use tokio_tungstenite::{accept_async, tungstenite::protocol::Message};
 use futures_util::StreamExt;
-use std::{ops::Deref, sync::{Arc, Mutex}};
+use std::{ops::Deref, sync::{mpsc::Sender, Arc, Mutex}};
 
 use log::{info, warn, error};
 use env_logger;
@@ -136,7 +136,7 @@ async fn connection_handler(ws_stream: tokio_tungstenite::WebSocketStream<tokio:
     error!("Client disconnected.");
 }
 
-fn parse_packet(data: &Vec<u8>) -> Result<BrokerCommand, String> {
+fn parse_packet(data: &Vec<u8>, ws_sender: Sender<Message>) -> Result<BrokerCommand, String> {
     if data.is_empty() {
         return Err("Empty data".to_string());
     }
@@ -152,25 +152,28 @@ fn parse_packet(data: &Vec<u8>) -> Result<BrokerCommand, String> {
             // CONNECT message
             let connect_packet = Connect::from_bytes(data.clone());
             
-
+            let (tx, rx) = oneshot::channel();
             Ok(BrokerCommand::Connect{
                 packet: connect_packet,
-                responder: oneshot::channel().0,
+                ws_sender: ws_sender.clone(),
+                responder: tx,
             })
         }
         2 => {
+            let (tx, rx) = oneshot::channel();
             // CONNACK message
             Ok(BrokerCommand::ConnAck{
-                responder: oneshot::channel().0,
+                responder: tx,
             })
         },
         3 => {
+            let (tx, rx) = oneshot::channel();
             // PUBLISH message
             let publish_packet = Publish::from_bytes(data.clone());
 
             Ok(BrokerCommand::Publish{
                 packet: publish_packet,
-                responder: oneshot::channel().0,
+                responder: tx,
             })
         },
         _ => {

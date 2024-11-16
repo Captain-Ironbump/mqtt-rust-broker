@@ -10,7 +10,7 @@ pub struct ConnectPayload {
     pub password: Option<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PublishPayload {
     pub payload: Vec<u8>,
 }
@@ -30,6 +30,12 @@ pub enum Payload {
     Publish(PublishPayload),
     Subscribe(SubscribePayload),
     Default(Default),
+}
+
+impl PublishPayload {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.payload.clone()
+    }
 }
 
 pub struct PayloadFactory;

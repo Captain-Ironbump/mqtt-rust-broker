@@ -104,6 +104,18 @@ impl MqttHeaders {
     pub fn incomming_byte_size(&self) -> usize {
         self.remaining_length_bytes + 1
     }
+
+    pub fn get_qos_level(&self) -> u8 {
+        self.flags & 0x06 as u8
+    }
+
+    pub fn get_dup_flag(&self) -> bool {
+        (self.flags & 0x08) == 0x08
+    }
+
+    pub fn get_retain_flag(&self) -> bool {
+        (self.flags & 0x01) == 0x01
+    }
 }
 
 pub trait VariableHeader {
@@ -313,6 +325,18 @@ impl PublishHeader {
             packet_id,
             topic_name_length,
         }
+    }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut buffer = Vec::new();
+        buffer.extend(self.topic_name_length.to_be_bytes().iter());
+        buffer.extend(self.topic_name.as_bytes());
+        buffer.extend(self.packet_id.to_be_bytes().iter());
+        buffer
+    }
+
+    pub fn get_topic_name(&self) -> String {
+        self.topic_name.clone()
     }
 }
 
